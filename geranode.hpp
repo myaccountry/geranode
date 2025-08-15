@@ -2,54 +2,63 @@
 using namespace std;
 
 template <typename type>
-class node {
-private:
-	size_t len = 0;
+class listnode {
 public:
-	type value;
-	node *prev = nullptr;
-	node *next = nullptr;
+	class node {
+	public:
+		type value;
+		node *next = nullptr;
+		node *prev = nullptr;
+	public:
+		node() {};
 
-	node()
-		: value(0), len(1) {};
-	node(const node &obj) {
-		this->copy(obj);
-	};
-	node(type value)
-		: value(value), len(1) {};
-	node(type value, node *next): value(value), next(next) {
-		if (next)
-			this->len = ++next->len;
-		else
-			this->len = 1;
-	};
-	node(node *prev, type value) : value(value), prev(prev) {
-		if (prev)
-			this->len = ++prev->len;
-		else
-			this->len = 1;
-	};
-	node(node *prev_, type value, node *next_) : value(value), prev(prev_), next(next_) {
-		if (this->prev)
-			this->len = ++this->prev->len;
-		else {
-			if (this->next)
-				this->len = ++this->next->len;
-			else
-				this->len = 1;
-		}
+		node(const type &val) : value(val) {};
+
+		node(const type &val, node *nxt)
+			: value(val), next(nxt) {};
+		
+		node(node *prv, const type &val)
+			: value(val), prev(prv) {};
+
+		node(node *prv, const type &val, node *nxt)
+			: value(val), prev(prv), next(nxt) {};
 	};
 
-	~node() {
+public:
+	size_t length = 0;
+	node *header = nullptr;
+	node *tail = nullptr;
+
+public:
+	listnode() {};
+
+	listnode(const type &value) {
+		this->header = this->tail = new node(value);
+		this->length++;
+	};
+
+	listnode(const listnode &obj) {
+		for (const auto &val : obj)
+			this->append(val);
+	};
+
+	~listnode() {
 		this->clear();
 	};
 
-	node &operator=(const node &obj) {
-		this->copy(obj);
+	listnode &operator=(const listnode &obj) {
+		if (this == &obj)
+			return *this;
+		this->clear();
+		this->header = this->tail = nullptr;
+		this->length = 0;
+
+		for (const auto &val : obj)
+			this->append(val);
 		return *this;
 	};
 
-	friend ostream &operator<<(ostream &out, node &obj) {
+	friend ostream &operator<<(ostream &out, listnode &obj) {
 		auto it = obj.begin();
 		out << "-[" << *it;
 		for (size_t i = 1; ++it != obj.end(); i++)
@@ -58,160 +67,150 @@ public:
 		return out;
 	};
 
-	void append(type elem) {
-		node<type> *stdata = new node<type>(elem);
-		node<type> *last = this;
-		while (last->next)
-			last = last->next;
-		last->next = stdata;
-		stdata->prev = last;
-		this->len++;
-	};
-
-	void appbeg(type elem) {
-		node<type> *stdata = new node<type>(elem);
-		node<type> *first = this;
-		while (first->prev)
-			first = first->prev;
-		first->prev = stdata;
-		stdata->next = first;
-		this->len++;
-	};
-
-	void before(type elem, size_t index) {
-		node<type> *tmp = new node<type>(this->value);
-		iterator it = this->begin();
-		++it;
-
-		for (size_t i = 1; it != this->end(); ++it, ++i) {
-			if (i == index)
-				tmp->append(elem);
-			tmp->append(*it);
+	void append(type value) {
+		node *tmp = new node(value);
+		if (this->length == 0) {
+			this->header = this->tail = tmp;
+		} else {
+			this->tail->next = tmp;
+			tmp->prev = this->tail;
+			this->tail = tmp;
 		}
-		if (index >= this->size())
-        	tmp->append(elem);
-
-		this->copy(*tmp);
-		delete tmp;
+		this->length++;
 	};
 
-	void after(type elem, size_t index) {
-		node<type> *tmp = new node<type>(this->value);
-		iterator it = this->begin();
-		++it;
-
-		for (size_t i = 1; it != this->end(); ++it, ++i) {
-			if (i == index + 1)
-				tmp->append(elem);
-			tmp->append(*it);
+	void appbeg(type value) {
+		node *tmp = new node(value);
+		if (this->length == 0) {
+			this->header = tmp;
+		} else {
+			this->header->prev = tmp;
+			tmp->next = this->header;
+			this->header = tmp;
 		}
-		if (index >= this->size())
-        	tmp->append(elem);
+		this->length++;
+	};
 
-		this->copy(*tmp);
+	void before(type value, size_t index) {
+		if (index == 0) {
+			this->appbeg(value);
+			return;
+		} if (index >= this->length) {
+			this->append(value);
+			return;
+		}
+
+		iterator it = this->begin();
+		for (size_t i = 0; i < index; i++)
+			++it;
+		node *tmp = new node(it.current->prev, value, it.current);
+		it.current->prev->next = tmp;
+		it.current->prev = tmp;
+
+		this->length++;
+	};
+
+	void after(type value, size_t index) {
+		this->before(value, index + 1);
+	};
+
+	void delelem(size_t index) {
+		node *tmp;
+		if (index == 0) {
+			tmp = this->header;
+			this->header = this->header->next;
+			if (this->header)
+				this->header->prev = nullptr;
+			else
+				this->tail = nullptr;
+			delete tmp;
+			this->length--;
+			return;
+		}
+
+		iterator it = this->begin();
+		for (size_t i = 0; i < index; i++)
+			++it;
+		tmp = it.current;
+		if (tmp->prev)
+			tmp->prev->next = tmp->next;
+		if (tmp->next)
+			tmp->next->prev = tmp->prev;
+		else
+			this->tail = tmp->prev;
 		delete tmp;
+		this->length--;
+	};
+
+	void remove(size_t index, size_t amount) {
+		for (size_t i = 0; i < amount; i++)
+			this->delelem(index);
 	};
 
 	void clear() {
-		node *current = this->next;
-		while (current != nullptr) {
+		node *current = this->header;
+		while (current) {
 			node *next = current->next;
-			current->next = nullptr;
+			delete current;
 			current = next;
 		}
-		this->next = nullptr;
-
-		current = this->prev;
-		while (current != nullptr) {
-			node *prev = current->prev;
-			current->prev = nullptr;
-			current = prev;
-		}
-		this->prev = nullptr;
-	};
-
-	void copy(node &obj) {
-		this->value = obj.value;
-		this->len = 1;
-		this->clear();
-	    for (iterator it = obj.begin() + 1; it != obj.end(); ++it)
-	    	this->append(*it);
-	};
-
-	type getelem(size_t index) {
-		iterator it = this->begin() + index;
-		return *it;
 	};
 
 	size_t size() const {
-		return this->len;
+		return this->length;
 	};
 
-public:
 	class iterator {
-	public:
-		node *current;
+		public:
+			node *current = nullptr;
+		public:
+			iterator(node *curr) : current(curr) {};
 
-		explicit iterator(node *node = nullptr) : current(node) {};
-		iterator operator=(node *node) {
-			current = node;
-			return *this;
-		};
+			type &operator*() const {
+				return current->value;
+			};
 
-		type &operator*() const {
-			return current->value;
-		};
+			type *operator->() const {
+				return &current->value;
+			};
 
-		type *operator->() const {
-			return &current->value;
-		};
+			iterator &operator++() {
+				this->current = this->current->next;
+				return *this;
+			};
 
-		iterator &operator++() {
-			current = current->next;
-			return *this;
-		};
+			iterator operator++(int) {
+				iterator tmp = *this;
+				this->current = this->current->next;
+				return tmp;
+			};
 
-		iterator operator++(int) {
-			iterator tmp = *this;
-			current = current->next;
-			return tmp;
-		};
+			iterator &operator--() {
+				this->current = this->current->prev;
+				return *this;
+			};
 
-		iterator operator+(int amount) {
-			iterator tmp = *this;
-			while (amount-- > 0)
-				if (tmp.current->next)
-					tmp.current = tmp.current->next;
-				else
-					return iterator(nullptr);
-			return tmp;
-		};
+			iterator operator--(int) {
+				iterator tmp = *this;
+				this->current = this->current->prev;
+				return tmp;
+			};
 
-		iterator &operator--() {
-			current = current->prev;
-			return *this;
-		};
+			bool operator==(const iterator &obj) {
+				return this->current == obj.current;
+			};
 
-		iterator operator--(int) {
-			iterator tmp = *this;
-			current = current->prev;
-			return tmp;
-		};
-
-		bool operator==(const iterator& obj) const {
-			return current == obj.current;
-		};
-
-        bool operator!=(const iterator& obj) const {
-        	return current != obj.current;
-        };
+			bool operator!=(const iterator &obj) {
+				return this->current != obj.current;
+			};
 	};
 
 	iterator begin() {
-		node *first = this;
-		while (first->prev)
-			first = first->prev;
-		return iterator(first);
+		return iterator(this->header);
+	};
+
+	iterator prend() {
+		return iterator(this->tail);
 	};
 
 	iterator end() {
