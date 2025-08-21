@@ -1,5 +1,4 @@
 #include <iostream>
-using namespace std;
 
 template <typename type>
 class listnode {
@@ -12,16 +11,21 @@ public:
 	public:
 		node() {};
 
-		node(const type &val) : value(val) {};
+		node(const type &val) {
+			value = val;
+		};
 
-		node(const type &val, node *nxt)
-			: value(val), next(nxt) {};
-		
-		node(node *prv, const type &val)
-			: value(val), prev(prv) {};
+		node(const type &val, node *nxt) : next(nxt) {
+			value = val;
+		};
 
-		node(node *prv, const type &val, node *nxt)
-			: value(val), prev(prv), next(nxt) {};
+		node(node *prv, const type &val) : prev(prv) {
+			value = val;
+		};
+
+		node(node *prv, const type &val, node *nxt) : prev(prv), next(nxt) {
+			value = val;
+		};
 	};
 
 public:
@@ -38,8 +42,11 @@ public:
 	};
 
 	listnode(const listnode &obj) {
-		for (const auto &val : obj)
-			this->append(val);
+		node *current = obj.header;
+        while (current) {
+            this->append(current->value);
+            current = current->next;
+        }
 	};
 
 	~listnode() {
@@ -49,25 +56,25 @@ public:
 	listnode &operator=(const listnode &obj) {
 		if (this == &obj)
 			return *this;
-		this->clear();
-		this->header = this->tail = nullptr;
-		this->length = 0;
 
-		for (const auto &val : obj)
-			this->append(val);
-		return *this;
+		this->clear();
+        node *current = obj.header;
+        while (current) {
+            this->append(current->value);
+            current = current->next;
+        }
+        return *this;
 	};
 
-	friend ostream &operator<<(ostream &out, listnode &obj) {
-		auto it = obj.begin();
-		out << "-[" << *it;
-		for (size_t i = 1; ++it != obj.end(); i++)
-			out << ", " << *it;
-		out << "]-";
+	friend std::ostream &operator<<(std::ostream &out, const listnode &obj) {
+		listnode<type> tmp = listnode::clone(obj);
+		iterator it = tmp.begin();
+		for (size_t i = 0; it != tmp.end(); i++)
+			out << "-[" << *it++ << "]-";
 		return out;
 	};
 
-	void append(type value) {
+	void append(const type &value) {
 		node *tmp = new node(value);
 		if (this->length == 0) {
 			this->header = this->tail = tmp;
@@ -79,7 +86,7 @@ public:
 		this->length++;
 	};
 
-	void appbeg(type value) {
+	void appbeg(const type &value) {
 		node *tmp = new node(value);
 		if (this->length == 0) {
 			this->header = tmp;
@@ -91,7 +98,7 @@ public:
 		this->length++;
 	};
 
-	void before(type value, size_t index) {
+	void before(const type &value, size_t index) {
 		if (index == 0) {
 			this->appbeg(value);
 			return;
@@ -110,11 +117,11 @@ public:
 		this->length++;
 	};
 
-	void after(type value, size_t index) {
+	void after(const type &value, size_t index) {
 		this->before(value, index + 1);
 	};
 
-	void delelem(size_t index) {
+	void pop(size_t index) {
 		node *tmp;
 		if (index == 0) {
 			tmp = this->header;
@@ -144,7 +151,7 @@ public:
 
 	void remove(size_t index, size_t amount) {
 		for (size_t i = 0; i < amount; i++)
-			this->delelem(index);
+			this->pop(index);
 	};
 
 	void clear() {
@@ -154,6 +161,21 @@ public:
 			delete current;
 			current = next;
 		}
+	};
+
+	type &get(size_t index) {
+		iterator it = this->begin();
+		while (index-- != 0)
+			++it;
+		return *it;
+	};
+
+	bool find(type elem) {
+		iterator it = this->begin();
+		for (; it != this->end(); ++it)
+			if (*it == elem)
+				return true;
+		return false;
 	};
 
 	size_t size() const {
@@ -172,6 +194,10 @@ public:
 
 			type *operator->() const {
 				return &current->value;
+			};
+
+			type value() const {
+				return current->value;
 			};
 
 			iterator &operator++() {
@@ -215,5 +241,15 @@ public:
 
 	iterator end() {
 		return iterator(nullptr);
+	};
+
+	static listnode &clone(const listnode &obj) {
+		listnode<type> *tmp = new listnode<type>();
+		node *current = obj.header;
+        while (current) {
+            tmp->append(current->value);
+            current = current->next;
+        }
+        return *tmp;
 	};
 };
