@@ -1,4 +1,4 @@
-#include <iostream>
+#include <cstddef>
 
 template <typename type>
 class listnode {
@@ -89,7 +89,7 @@ public:
 	void appbeg(const type &value) {
 		node *tmp = new node(value);
 		if (this->length == 0) {
-			this->header = tmp;
+			this->header = this->tail = tmp;
 		} else {
 			this->header->prev = tmp;
 			tmp->next = this->header;
